@@ -30,6 +30,7 @@ cat << EOF
 
   + : append trailing path2 which doesn't exist yet
       eg /t+bar expands to /tmp/bar even if /tmp/bar doesn't exist
+      (TODO reimplement this features)
 
   trailing / : match directories only
 
@@ -67,24 +68,16 @@ first_char(){
   fi
 }
 
+# appends glob pattern to gglob
 do_match(){
-  ( # use subshell because PATH is changed
-
-  local path2="$1"
-  cd $path2 || return
-
-  local pattern="$2";
-  shift 2
+  local pattern="$1";
+  shift 1
 
   [ -z "$pattern" ] && { echo "internal error"; exit 1; }
 
-  # echo "path2 : $path2; pattern :$pattern" 1>&2
+  echo "path2 : $path2; pattern :$pattern" 1>&2
 
   [ -d "$path2" ] || return
-
-  # handle cases such as foo,**,** (add dirs only once to the list
-  echo "$visited" | grep -qe "^${path2}$" &> /dev/null && return
-  visited="$(echo "$visited"; echo $path2)"
 
   # remove first char
   local real_pattern="${pattern#?}"
@@ -115,38 +108,19 @@ do_match(){
     :*)
       # match if characters are found in this order. eg ab matches YYaZZZZZZZbXX
       local p="$( echo -n "*"; echo "$real_pattern" | sed 's/\(.\)/\1*/g')"
-      [ -n "$get_dirs"  ] &&  dirs="$(find . -maxdepth 1 -type d -name "${p}" | eval "$SED")"
-      [ -n "$get_files" ] && files="$(find . -maxdepth 1 -type f -name "${p}" | eval "$SED")"
+      gglob="${gglob}$p"
     ;;
     ,*)
-      # glob pattern match
-      if [ "$real_pattern" = "**" ]; then
-        # bash < 4 didn't know about ** patterns, correct?
-        # regex match
-        [ -n "$get_dirs"  ] &&  dirs="$(find . -type d | eval "$SED")"
-        # omiting files. I'm too lazy to add files_visited by now
-      else
-        [ -n "$get_dirs"  ] &&  dirs="$(find . -maxdepth 1 -type d -name "${real_pattern}" | eval "$SED")"
-        [ -n "$get_files" ] && files="$(find . -maxdepth 1 -type f -name "${real_pattern}" | eval "$SED")"
-      fi
-    ;;
-    =*)
-      # regex match
-      [ -n "$get_dirs"  ] &&  dirs="$(find . -maxdepth 1 -type d | eval "$SED" | egrep "$real_pattern" )"
-      [ -n "$get_files" ] && files="$(find . -maxdepth 1 -type f | eval "$SED" | egrep "$real_pattern" )"
+      gglob="${gglob}${real_pattern}"
     ;;
     -*)
       # * levels up eg -3 = ../../..
       [ -n "$get_dirs"  ] && {
         for nr in `seq $real_pattern`; do
-          dirs="${dirs}../"
+          dirs="${dirs}.."
         done
-        dirs=${dirs/%\//} # remove trailing /
+        gglob="${gglob}${dirs}"
       }
-    ;;
-    +*) # append path2 even if it doesn't exist
-      dirs="${real_pattern}"
-      recurse=
     ;;
     *) # @ = default, @ was stripped above
       local head="$(first_char "$pattern")"
@@ -156,27 +130,19 @@ do_match(){
       # repeat this step for the remaining chars
       [ -n "$tail" ] && extra_args="@$tail"
 
-      [ -n "$get_dirs"  ] &&  dirs="$(find . -maxdepth 1 -type d -name "${head}*" | eval "$SED")"
-      [ -n "$get_files" ] && files="$(find . -maxdepth 1 -type f -name "${head}*" | eval "$SED")"
+      set -x
+      gglob="${gglob}${head}*"
     ;;
   esac
   if [ -n "$recurse" ]; then
     # recurse in to subdirs
-    for dir in $dirs; do
-      if [ -z "$extra_args" ]; then
-        do_match "${path2}$dir/" "$@"
-      else
-        do_match "${path2}$dir/" "$extra_args" "$@"
-      fi
-    done
-  else
-    # echo dirs
-    for dir in $dirs; do echo "${path2}$dir"; done
-
-    # echo files
-    for file in $files; do echo "${path2}$file"; done
+    gglob="${gglob}/"
+    if [ -z "$extra_args" ]; then
+      do_match "$@"
+    else
+      do_match "$extra_args" "$@"
+    fi
   fi
-  )
 }
 
 user_select(){
@@ -209,17 +175,18 @@ match(){
     path2=/
   }
   
-  visited=
-
   # the parser: prepend '`' to each separator and use IFS to split by that
   local sep_by_back_tick="$(echo "$pattern" | sed 's/\([-=@,:+]\)/`\1/g')"
   IFS=\` read -a args <<< "$sep_by_back_tick"
 
-  lines="$(do_match "$path2" ${args[@]} | sort)"
-  user_select "$lines"
+  gglob= # global var
+  do_match ${args[@]}
+  echo "$gglob"
+  # user_select "$lines"
 }
 
 self_test(){
+  echo "FIXME"; exit 1 # Test is outdated
   # I don't test / prefix here
   t=$(mktemp -d); cd "$t"
   set -e -x
