@@ -1,0 +1,44 @@
+Be even faster. Example: Just type C /hm to change directory to /home/marc
+
+usage:
+  path-selector.sh pat1 pat2 pat3
+
+  path-selector.sh is kind of xpath for directories/ files
+  you should use it with cd, vim etc to be most productive
+
+  pattern selector description:
+  first char is "/" means set path2 to root
+
+  The rest of the pattern selector is split by @ - , :
+  @ : @foo expands to f*/o*/o* . This is default
+  : : :foo expands to *f*o*o*
+  = : regex match
+  , : exact match or glob pattern. Examples:
+      ,*.txt -> *.txt
+      ,exact -> exact
+  -nr : go to parent directory nr times
+    -3 = ../../..
+
+  + : append trailing path2 which doesn't exist yet
+      eg /t+bar expands to /tmp/bar even if /tmp/bar doesn't exist
+
+  trailing / : match directories only
+
+  Now you can put pieces together:
+  /tt -> /tmp/this # file or directory
+  /tt/ -> /tmp/this # directory only
+
+  When beeing in /tmp/this:
+    -2hm -> ../../home/m*
+
+  etc
+
+  Useful shell functions:
+
+    C()   { cd       $(path-selector.sh "$@"); }
+    E()   { $EDITOR  $(path-selector.sh "$@"); }
+    MDC() { mdc      $(path-selector.sh "$@"); }
+
+  Instead of path-selector.sh you can source path-selector.sh by
+  AS_LIB source path-selector.sh 
+  and use match as shown in main below.

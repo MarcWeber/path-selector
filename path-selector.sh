@@ -11,7 +11,7 @@
 # add support for ** and keep a list of visited directories
 
 do_help(){
-  local this_script=/tmp/$(basename $0)
+  local this_script=$(basename $0)
 cat << EOF
   $this_script pat1 pat2 pat3
 
