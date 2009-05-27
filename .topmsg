@@ -1,0 +1,8 @@
+From: Marc Weber <marco-oweber@gmx.de>
+Subject: [PATCH] t/glob-only
+
+assemble glob pattern and evaluate this using bash at the end.
+pros: much faster
+cons: It's harder to do some customization (such as adding black lists)
+
+Signed-off-by: Marc Weber <marco-oweber@gmx.de>
