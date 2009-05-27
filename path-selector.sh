@@ -4,11 +4,8 @@
 # you can either run it as script or source it this way
 # AS_LIB=1 . $PATH_TO_THIS_FILE
 
-# BUGS - wont't fix: names may not contain \n
-# BUGS to be fixed:  to be found
-
-# TODO:
-# add support for ** and keep a list of visited directories
+# BUGS - wont't fix: names containing \n is not supported
+# BUGS to be fixed: See commented test cases
 
 do_help(){
   local this_script=$(basename $0)
@@ -54,6 +51,10 @@ cat << EOF
   Instead of $this_script you can source $this_script by
   AS_LIB source $this_script 
   and use match as shown in main below.
+
+
+  bug-reports, feedback to: marco-oweber@gmx.de
+  updates: http://www.github.com/MarcWeber/path-selector
 EOF
 }
 
