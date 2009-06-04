@@ -19,7 +19,7 @@ cat << EOF
   you should use it with cd, $EDITOR etc to be most productive
 
   pattern selector description:
-  first char is "/" means set path2 to root
+  first char is "/" means set baseDir to root
 
   The rest of the pattern selector is split by @ - , :
   @ : @foo expands to f*/o*/o* . This is default
@@ -31,7 +31,7 @@ cat << EOF
   -nr : go to parent directory nr times
     -3 = ../../..
 
-  + : append trailing path2 which doesn't exist yet
+  + : append trailing path which doesn't exist yet
       eg /t+bar expands to /tmp/bar even if /tmp/bar doesn't exist
 
   trailing / : match directories only
@@ -77,10 +77,6 @@ do_match(){
 
   [ -z "$pattern" ] && { echo "internal error"; exit 1; }
 
-  # echo "path2 : $path2; pattern :$pattern" 1>&2
-
-  [ -d "$path2" ] || return
-
   # remove first char
   local real_pattern="${pattern#?}"
 
@@ -116,15 +112,22 @@ do_match(){
       gglob="${gglob}${real_pattern}"
     ;;
     -*)
+      local  num=$(echo $real_pattern | sed 's/^\([0123456789]*\).*/\1/')
+      local tail=$(echo $real_pattern | sed 's/^[0123456789]*\(.*\)/\1/')
+
       # * levels up eg -3 = ../../..
       [ -n "$get_dirs"  ] && {
-        for nr in `seq $real_pattern`; do
-          dirs="${dirs}.."
+        for nr in `seq $num`; do
+          dirs="${dirs}../"
         done
+        dirs=${dirs/%\//} # remove last /
         gglob="${gglob}${dirs}"
       }
+
+      # repeat this step for the remaining chars
+      [ -n "$tail" ] && { recurse=1; extra_args="@$tail"; }
     ;;
-    +*) # append path2 even if it doesn't exist
+    +*)
       append="${real_pattern}"
       return
     ;;
@@ -166,21 +169,21 @@ user_select(){
   fi
 }
 
-echoDirs(){ for i in "$@"; do [ -d "$i" ] && echo "$i${append}"; done; }
-echoAll(){ for i in "$@"; do echo "${i}${append}"; done; }
+echoDirs(){ for i in "$@"; do [ -d "$i" ] && echo "${prefix}${i}${append}"; done; }
+echoAll(){ for i in "$@"; do echo "${prefix}${i}${append}"; done; }
 
 match(){
-  local path2="$1"
+  local baseDir="$1"
   local pattern="$2"
 
-  [ -z "$path2" ] && path2=./
+  [ -z "$baseDir" ] && baseDir=./
 
-  [ "${path2%/}" == "$path2" ] && path2="$path2/"
+  [ "${baseDir%/}" == "$baseDir" ] && baseDir="$baseDir/"
 
   [ "$(first_char "$pattern")" == "/" ] && {
     # jump to root if first char of pattern is /
     pattern="${pattern#?}"
-    path2=/
+    baseDir=/
   }
   
   # the parser: prepend '`' to each separator and use IFS to split by that
@@ -189,10 +192,14 @@ match(){
 
   do_match ${args[@]}
 
+  if [ "$baseDir" == / ]; then
+    prefix=/
+  fi
+
   if [ -n "$dirs_only" ]; then
-    lines="$(cd "$path2"; eval "echoDirs $gglob")"
+    lines="$(cd "$baseDir"; eval "echoDirs $gglob")"
   else
-    lines="$(cd "$path2"; eval "echoAll $gglob")"
+    lines="$(cd "$baseDir"; eval "echoAll $gglob")"
   fi
   user_select "$lines"
 }
