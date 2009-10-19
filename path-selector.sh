@@ -153,19 +153,43 @@ do_match(){
   fi
 }
 
+nr_to_chars(){
+  local chars="$2"
+  local nr=$1
+
+  local len=${#chars}
+  local res=
+
+  while :; do
+    r=$(( $nr % $len ))
+    nr=$(( $nr / $len ))
+    res="${chars:$r:1}$res"
+    [[ $nr != 0 ]] || {
+      echo -n $res
+      return 0
+    }
+  done
+}
+
 user_select(){
   local lines="$1" # get stdin
   [ -z "$lines" ] && return
   if [ $(echo -e "$lines" | wc -l) = 1 ]; then
     echo "$lines"
   else
-    local nr=1
-    echo "$lines" | while read match; do
-      echo "$nr) $match" 1>&2
+    local chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+    local nr=0
+    while read match; do
+      local key=$(nr_to_chars $nr "$chars")
+      local var="key_${key}"
+      declare "$var=$match"
+      echo "$key) $match" 1>&2
       nr=$(( $nr + 1 ))
-    done
-    read nr
-    echo "$lines" | sed -n "${nr}p"
+    done <<< "$lines"
+    read key_user
+    var="key_${key_user}"
+    echo ${!var}
   fi
 }
 
