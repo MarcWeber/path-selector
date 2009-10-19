@@ -1,11 +1,13 @@
 #!/bin/sh
-# GPL 2009
+# GPLv2 2009
 # Marc Weber based on a haskell app I wrote which was much more complicated :-)
 # you can either run it as script or source it this way
 # AS_LIB=1 . $PATH_TO_THIS_FILE
 
 # BUGS - wont't fix: names containing \n is not supported
 # BUGS to be fixed: See commented test cases
+
+# repo location: http://github.com/MarcWeber/path-selector
 
 # TODO
 # tidy up!
