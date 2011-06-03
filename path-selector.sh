@@ -1,8 +1,6 @@
 #!/bin/sh
 # GPLv2 2009
 # Marc Weber based on a haskell app I wrote which was much more complicated :-)
-# you can either run it as script or source it this way
-# AS_LIB=1 . $PATH_TO_THIS_FILE
 
 # BUGS - wont't fix: names containing \n is not supported
 # BUGS to be fixed: See commented test cases
@@ -54,7 +52,6 @@ cat << EOF
     MDC() { mdc      \$($this_script "\$@"); }
 
   Instead of $this_script you can source $this_script by
-  AS_LIB source $this_script 
   and use match as shown in main below.
 
 
@@ -227,7 +224,7 @@ match(){
   else
     lines="$(cd "$baseDir"; eval "echoAll $gglob")"
   fi
-  user_select "$lines"
+  $command "$lines"
 }
 
 self_test(){
@@ -258,11 +255,30 @@ self_test(){
 }
 
 # main
-[ "$1" = "--help" ] && { do_help; exit; }
-[ "$1" = "--self-test" ] && { self_test; exit; }
-if [ -z "$AS_LIB" ]; then
-  set -e
-  for pattern in "$@"; do
-    match "./" $pattern
-  done
-fi
+
+
+command="user_select"
+args=()
+while test "$#" -gt 0; do
+  case "$1" in
+    --help)
+      do_help; exit; 
+      shift
+      ;;
+    --self-test)
+      self_test; exit; 
+      shift
+      ;;
+    --echo)
+      command="echo"
+      shift
+      ;;
+    *)
+      args="$args $1"
+      shift
+  esac
+done
+
+for pattern in $args; do
+  match "./" $pattern
+done
